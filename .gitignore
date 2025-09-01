@@ -11,6 +11,7 @@ ut
 # Build artifacts
 bin/
 build/
+!internal/build/
 dist/
 
 # Coverage
@@ -25,4 +26,3 @@ coverage*
 .vscode/
 *.swp
 *.swo
-
