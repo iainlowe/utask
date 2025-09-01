@@ -1,0 +1,93 @@
+name: Release on tag
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'v*.*.*-*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.goos }}-${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        goos: [linux, darwin, windows]
+        goarch: [amd64, arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Verify tag is semver
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          if [[ ! "$TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)(-[0-9A-Za-z\.-]+)?$ ]]; then
+            echo "Tag $TAG is not valid semver (vX.Y.Z[-prerelease])" >&2
+            exit 1
+          fi
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p dist
+          BIN=ut
+          EXT=""
+          if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
+          OUT="ut_${GOOS}_${GOARCH}${EXT}"
+          echo "OUT=$OUT" >> $GITHUB_ENV
+          go build -trimpath -ldflags "-s -w" -o "dist/$OUT" ./cmd/ut
+
+      - name: Package
+        run: |
+          cd dist
+          if [[ "${{ matrix.goos }}" == "windows" ]]; then
+            zip "${OUT%.exe}.zip" "$OUT"
+            rm -f "$OUT"
+          else
+            tar -czf "${OUT}.tar.gz" "$OUT"
+            rm -f "$OUT"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.OUT }}
+          path: dist/*
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          find . -type f -maxdepth 1 -print0 | sort -z | xargs -0 shasum -a 256 > SHA256SUMS
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/**
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
