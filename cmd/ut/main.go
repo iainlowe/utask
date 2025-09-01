@@ -1,30 +1,43 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"log"
-	"os"
-	"strings"
+    "context"
+    "encoding/json"
+    "fmt"
+    "log"
+    "os"
+    "strings"
 
-	conf "github.com/iainlowe/utask/internal/config"
-	"github.com/iainlowe/utask/internal/utask"
-	cli "github.com/urfave/cli/v2"
+    conf "github.com/iainlowe/utask/internal/config"
+    buildinfo "github.com/iainlowe/utask/internal/build"
+    "github.com/iainlowe/utask/internal/utask"
+    cli "github.com/urfave/cli/v2"
 )
 
 // appMetaKey is used to stash config into cli.App metadata
 const appMetaKey = "config"
 
 func main() {
-	app := &cli.App{
-		Name:  "ut",
-		Usage: "Minimal task queue CLI and MCP server",
-		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "config", Aliases: []string{"c"}, Usage: "path to config file", EnvVars: []string{"UTASK_CONFIG"}},
-			&cli.StringFlag{Name: "nats-url", Usage: "NATS server URL", EnvVars: []string{"UTASK_NATS_URL"}},
-			&cli.StringFlag{Name: "openai-api-key", Usage: "OpenAI API key", EnvVars: []string{"OPENAI_API_KEY"}},
-			&cli.StringFlag{Name: "openai-model", Usage: "OpenAI model name", EnvVars: []string{"UTASK_OPENAI_MODEL"}},
+    // Customize version flag to avoid -v alias conflict with verbose
+    cli.VersionFlag = &cli.BoolFlag{Name: "version", Usage: "print version and exit"}
+    cli.VersionPrinter = func(c *cli.Context) {
+        v := c.App.Version
+        if v == "" { v = buildinfo.Version }
+        if buildinfo.Commit != "" && buildinfo.Date != "" {
+            fmt.Printf("%s (%s %s)\n", v, buildinfo.Commit, buildinfo.Date)
+            return
+        }
+        fmt.Println(v)
+    }
+    app := &cli.App{
+        Name:  "ut",
+        Usage: "Minimal task queue CLI and MCP server",
+        Version: buildinfo.Version,
+        Flags: []cli.Flag{
+            &cli.StringFlag{Name: "config", Aliases: []string{"c"}, Usage: "path to config file", EnvVars: []string{"UTASK_CONFIG"}},
+            &cli.StringFlag{Name: "nats-url", Usage: "NATS server URL", EnvVars: []string{"UTASK_NATS_URL"}},
+            &cli.StringFlag{Name: "openai-api-key", Usage: "OpenAI API key", EnvVars: []string{"OPENAI_API_KEY"}},
+            &cli.StringFlag{Name: "openai-model", Usage: "OpenAI model name", EnvVars: []string{"UTASK_OPENAI_MODEL"}},
 			&cli.StringFlag{Name: "profile", Usage: "profile/namespace", EnvVars: []string{"UTASK_PROFILE"}},
 			&cli.BoolFlag{Name: "verbose", Aliases: []string{"v"}, Usage: "increase verbosity"},
 		},

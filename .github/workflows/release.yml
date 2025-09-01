@@ -30,6 +30,7 @@ jobs:
       - name: Verify tag is semver
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
+          echo "TAG=$TAG" >> $GITHUB_ENV
           if [[ ! "$TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)(-[0-9A-Za-z\.-]+)?$ ]]; then
             echo "Tag $TAG is not valid semver (vX.Y.Z[-prerelease])" >&2
             exit 1
@@ -40,6 +41,7 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
+          BUILD_DATE: ${{ steps.date.outputs.utc || '' }}
         run: |
           mkdir -p dist
           BIN=ut
@@ -47,7 +49,8 @@ jobs:
           if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
           OUT="ut_${GOOS}_${GOARCH}${EXT}"
           echo "OUT=$OUT" >> $GITHUB_ENV
-          go build -trimpath -ldflags "-s -w" -o "dist/$OUT" ./cmd/ut
+          LD_FLAGS="-s -w -X github.com/iainlowe/utask/internal/build.Version=$TAG -X github.com/iainlowe/utask/internal/build.Commit=$GITHUB_SHA -X github.com/iainlowe/utask/internal/build.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          go build -trimpath -ldflags "$LD_FLAGS" -o "dist/$OUT" ./cmd/ut
 
       - name: Package
         run: |
@@ -90,4 +93,3 @@ jobs:
           prerelease: ${{ contains(github.ref_name, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
