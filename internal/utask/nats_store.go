@@ -108,8 +108,7 @@ func (s *Store) CreateTask(ctx context.Context, in TaskInput) (Task, bool, error
 		}
 	}
 
-	// Emit event per spec: added payload is the task JSON
-	_ = s.emitAdded(t)
+    // Events removed
 
 	return t, false, nil
 }
@@ -193,7 +192,7 @@ func (s *Store) putTaskCAS(id string, t Task, rev uint64) error {
 	return nil
 }
 
-// UpdateTask modifies fields and updates the tag index; emits updated/closed/reopened events.
+// UpdateTask modifies fields and updates the tag index.
 func (s *Store) UpdateTask(ctx context.Context, id string, set UpdateSet) (Task, error) {
 	before, rev, err := s.GetTask(ctx, id)
 	if err != nil {
@@ -248,18 +247,11 @@ func (s *Store) UpdateTask(ctx context.Context, id string, set UpdateSet) (Task,
 			_ = s.removeTagID(t, id)
 		}
 	}
-	// Events
-	_ = s.emitUpdated(before, after)
-	if !before.Done && after.Done {
-		_ = s.emitClosed(after)
-	}
-	if before.Done && !after.Done {
-		_ = s.emitReopened(after)
-	}
-	return after, nil
+    // Events removed
+    return after, nil
 }
 
-// DeleteTask removes a task and its tag references; emits deleted event.
+// DeleteTask removes a task and its tag references.
 func (s *Store) DeleteTask(ctx context.Context, id string) (string, error) {
 	t, _, err := s.GetTask(ctx, id)
 	if err != nil {
@@ -271,8 +263,8 @@ func (s *Store) DeleteTask(ctx context.Context, id string) (string, error) {
 	for _, tag := range t.Tags {
 		_ = s.removeTagID(tag, id)
 	}
-	_ = s.emitDeleted(t.ID, t.Tags)
-	return t.ID, nil
+    // Events removed
+    return t.ID, nil
 }
 
 func (s *Store) CloseTask(ctx context.Context, id string) (Task, bool, error) {
@@ -287,8 +279,8 @@ func (s *Store) CloseTask(ctx context.Context, id string) (Task, bool, error) {
 	if err := s.putTaskCAS(id, t, rev); err != nil {
 		return Task{}, false, err
 	}
-	_ = s.emitClosed(t)
-	return t, true, nil
+    // Events removed
+    return t, true, nil
 }
 
 func (s *Store) ReopenTask(ctx context.Context, id string) (Task, bool, error) {
@@ -303,8 +295,8 @@ func (s *Store) ReopenTask(ctx context.Context, id string) (Task, bool, error) {
 	if err := s.putTaskCAS(id, t, rev); err != nil {
 		return Task{}, false, err
 	}
-	_ = s.emitReopened(t)
-	return t, true, nil
+    // Events removed
+    return t, true, nil
 }
 
 // List tasks; if tag is non-empty, list by tag index, else scan all keys.
@@ -504,56 +496,7 @@ func (s *Store) RebuildIndex(ctx context.Context) error {
 	return nil
 }
 
-// emitAdded publishes utask.event.added with the task JSON payload.
-func (s *Store) emitAdded(t Task) error {
-	b, _ := json.Marshal(t)
-	return s.nc.Publish("utask.event.added", b)
-}
-
-func (s *Store) emitClosed(t Task) error {
-	payload := map[string]any{
-		"id":        t.ID,
-		"closed_at": time.Now().UTC().Format(time.RFC3339),
-		"task":      t,
-	}
-	b, _ := json.Marshal(payload)
-	return s.nc.Publish("utask.event.closed", b)
-}
-
-func (s *Store) emitReopened(t Task) error {
-	payload := map[string]any{
-		"id":          t.ID,
-		"reopened_at": time.Now().UTC().Format(time.RFC3339),
-		"task":        t,
-	}
-	b, _ := json.Marshal(payload)
-	return s.nc.Publish("utask.event.reopened", b)
-}
-
-func (s *Store) emitUpdated(before, after Task) error {
-	payload := map[string]any{
-		"before": before,
-		"after":  after,
-	}
-	b, _ := json.Marshal(payload)
-	return s.nc.Publish("utask.event.updated", b)
-}
-
-func (s *Store) emitDeleted(id string, tags []string) error {
-	payload := map[string]any{
-		"id":   id,
-		"tags": tags,
-	}
-	b, _ := json.Marshal(payload)
-	return s.nc.Publish("utask.event.deleted", b)
-}
-
-// SubscribeEvents subscribes to utask events and invokes cb with subject and raw JSON.
-func (s *Store) SubscribeEvents(cb func(subject string, data []byte)) (*nats.Subscription, error) {
-	return s.nc.Subscribe("utask.event.*", func(m *nats.Msg) {
-		cb(m.Subject, m.Data)
-	})
-}
+// Events removed: no publish/subscribe helpers
 
 // Resolve implements Git-style prefix resolution. Returns full id and candidates on ambiguity.
 func (s *Store) Resolve(prefix string) (string, []string, error) {

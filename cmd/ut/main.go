@@ -121,7 +121,6 @@ func main() {
 				&cli.IntFlag{Name: "priority", Usage: "update priority"},
 			}, Action: cmdUpdate},
 			{Name: "delete", Usage: "Delete a task", Aliases: []string{"rm"}, Action: cmdDelete},
-			{Name: "events", Usage: "Stream events", Action: cmdEvents},
 			{Name: "tags", Usage: "List tags", Action: cmdTags},
             {Name: "rebuild-index", Usage: "Rebuild tag index", Action: cmdRebuildIndex},
             {Name: "check", Usage: "Check tasks for trailer issues", Flags: []cli.Flag{
@@ -368,26 +367,7 @@ func cmdReopen(c *cli.Context) error {
 	return nil
 }
 
-func cmdEvents(c *cli.Context) error {
-	cfg := getConfig(c)
-	ctx := context.Background()
-	store, err := utask.Open(ctx, cfg.NATS.URL, cfg.UI.Profile)
-	if err != nil {
-		return err
-	}
-	defer store.Close()
-	fmt.Fprintln(os.Stderr, "subscribing to utask.event.* (Ctrl-C to exit)")
-	sub, err := store.SubscribeEvents(func(subject string, data []byte) {
-		// Print subject and raw JSON payload
-		fmt.Println(string(data))
-	})
-	if err != nil {
-		return err
-	}
-	defer sub.Unsubscribe()
-	// Block
-	select {}
-}
+// events command removed
 
 func cmdTags(c *cli.Context) error {
 	cfg := getConfig(c)

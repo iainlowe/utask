@@ -56,11 +56,10 @@ ui:
 - `ut close <id>` — close task
 - `ut reopen <id>` — reopen task
 - `ut get <id>` — show task JSON
-- `ut events [--since duration]` — stream events (`utask.event.*`)
 - `ut tags` — list tags and counts
 - `ut mcp --stdio` — run MCP server over stdio
 
-See `utask.md` for schema, normalization, buckets, and events.
+See `utask.md` for schema, normalization, and buckets.
 
 ## MCP (stdio) Mode
 
@@ -77,7 +76,7 @@ Notes:
 ## NATS Defaults
 
 - Default NATS URL: `neo:4222` (configurable in `~/.utask/config.yaml`)
-- Buckets/subjects are defined in `utask.md`.
+- Buckets are defined in `utask.md`.
 
 ## Return Codes
 
@@ -87,6 +86,6 @@ Notes:
 
 ## Implementation Notes
 
-- Use KV compare-and-set for task state transitions; emit events only on successful writes.
+- Use KV compare-and-set for task state transitions.
 - Idempotent task creation using sha512 of normalized payload (see `utask.md`).
 - Keep CLI output terse by default; `--verbose` for details, `--json` flags can be added later if needed.
